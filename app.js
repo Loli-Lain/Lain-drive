@@ -58,7 +58,7 @@ class Server {
         /** 传递link，使用此配置，请求头必须设置文件类型 支持file、mp3，图片视频和silk均可传递file */
         case 'link':
           if (!req.headers.type) return res.status(400).json({ error: '未传递文件类型' })
-          return await this.linkFile(res, token, ip, req.body.link, req.headers.token)
+          return await this.linkFile(res, token, ip, req.body.link, req.headers.type)
         default:
           logger.error(`<post:返回> => <ip:${ip}> => <token:${token}> => <message:文件类型错误>`)
           return res.status(400).json({ error: '文件类型错误' })
@@ -85,8 +85,11 @@ class Server {
         return res.status(400).json({ error: '文件不存在' })
       }
 
+      let mime = File.split('-')
+      mime = `${mime[5]}/${mime[6].split('.')[0]}`
+
       /** 设置响应头 */
-      res.setHeader('Content-Type', 'application/octet-stream')
+      res.setHeader('Content-Type', mime || 'application/octet-stream')
       res.setHeader('Content-Disposition', 'inline')
       logger.mark(logger.green(`<get:返回> => <ip:${ip}> => <File:${File}>`))
       return fs.createReadStream(File).pipe(res)
@@ -161,7 +164,8 @@ class Server {
     try { image = sizeOf(buffer) } catch { }
     const { width, height } = image
     const { mime, ext } = await this.getType(buffer)
-    const name = `${md5}-${size}-${width}-${height}-${mime}.${ext}`
+    const arr = mime.split('/')
+    const name = `${md5}-${size}-${width}-${height}-${arr[0]}-${arr[1]}.${ext}`
 
     return {
       size,
@@ -177,7 +181,8 @@ class Server {
   /** 获取文件后缀、mime */
   async getType (buffer) {
     try {
-      return await fileTypeFromBuffer(buffer)
+      const { mime, ext } = await fileTypeFromBuffer(buffer)
+      return { mime, ext }
     } catch (error) {
       return { mime: 'application/octet-stream', ext: 'txt' }
     }
@@ -215,8 +220,9 @@ class Server {
   /** ffmpeg转码 转为pcm */
   async runFfmpeg (input, output) {
     let cm
-    const { stdout } = await exec('ffmpeg -version', { windowsHide: true })
-    cm = stdout ? 'ffmpeg' : (Cfg.ffmpeg_path || null)
+    let stdout
+    try { stdout = await exec('ffmpeg -version', { windowsHide: true }) } catch { }
+    cm = stdout?.stdout ? 'ffmpeg' : (Cfg.ffmpeg_path || null)
     if (!cm) throw new Error('未检测到 ffmpeg ，无法进行转码，请正确配置环境变量或手动前往 config.yaml 进行配置')
     try {
       await exec(`${cm} -i "${input}" -f s16le -ar 48000 -ac 1 "${output}"`)
