@@ -206,10 +206,10 @@ class Server {
       db.Post.post({ ip, token, type: 'mp3', time: Date.now(), md5: mp3.md5 })
 
       /** 拿MD5查数据库 */
-      mp3 = await db.Files.getMD5(mp3.md5)
+      const mp3File = await db.Files.getMD5(mp3.md5)
 
       /** 拿到了直接返回即可 */
-      if (mp3) return await this.returnPost(res, token, ip, mp3)
+      if (mp3File) return await this.returnPost(res, token, ip, mp3File)
 
       /** 转码 */
       const { ok, data } = await this.getAudio(buffer)
