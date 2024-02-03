@@ -226,7 +226,7 @@ class Server {
       /** 保存转码后的文件信息 */
       this.SaveFile({ ...silk, ip, token }, data)
       /** 返回 */
-      return await this.returnPost(res, token, ip, data)
+      return await this.returnPost(res, token, ip, silk)
     } catch (error) {
       logger.error(error)
       return res.status(500).json({ status: 'failed', message: '未知错误' })
