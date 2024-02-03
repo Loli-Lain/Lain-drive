@@ -281,9 +281,9 @@ class Server {
       data = Buffer.from(data?.data || data)
       logger.mark('pcm => silk 完成!')
       /** 删除初始mp3文件 */
-      fs.unlink(mp3, () => { })
+      fs.promises.unlink(mp3, () => { })
       /** 删除pcm文件 */
-      fs.unlink(pcm, () => { })
+      fs.promises.unlink(pcm, () => { })
       return { ok: true, data }
     } catch (error) {
       logger.error(error)
