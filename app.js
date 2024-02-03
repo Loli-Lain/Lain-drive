@@ -59,6 +59,26 @@ class Server {
     /** Get请求 返回文件 */
     app.get('/api/MD5/:md5', async (req, res) => await this.getRep(req, res, 'md5'))
 
+    /** Get请求 删除文件 */
+    app.get('/api/del/:md5', async (req, res) => {
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null
+      const token = req.headers.token || null
+      const md5 = req.params.md5
+      this.log(false, true, ip, token, `删除:${md5}`)
+      const file = await db.Files.getMD5(md5)
+      try {
+        if (file) {
+          fs.unlinkSync(file.path)
+          await file.destroy()
+          return res.status(200).json({ message: '删除成功' })
+        }
+        return res.status(400).json({ error: '文件不存在' })
+      } catch (error) {
+        logger.error(error)
+        return res.status(400).json({ error: '文件不存在' })
+      }
+    })
+
     /** POST请求 接收文件 */
     app.post('/api/upload', upload.single('file'), async (req, res) => {
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null
