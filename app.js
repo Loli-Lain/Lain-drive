@@ -23,6 +23,8 @@ class Server {
     this.File = `./File/${moment().format('YYYY-MM-DD')}/`
     /** 启动HTTP服务器 */
     this.server()
+    /** 定时任务 创建文件夹 */
+    schedule.scheduleJob('0 0 * * *', () => Cfg.CreateFolder())
     /** 定时任务 更新缓存路径 */
     schedule.scheduleJob('0 0 * * *', () => {
       this.File = `./File/${moment().format('YYYY-MM-DD')}/`
