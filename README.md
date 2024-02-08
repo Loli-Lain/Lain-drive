@@ -11,7 +11,6 @@
 搭配 [Lain-plugin](https://gitee.com/Zyy955/Lain-plugin) 使用，TRSS暂未适配。
 
 未来计划：
-- 支持语音云转码
 - 支持图像压缩
 
 ## 1.安装插件
@@ -55,13 +54,17 @@ async function POST (file) {
   file = await Bot.Buffer(file) // Bot.Buffer由Lain-plugin提供，如未安装，自行将文件转为buffer
   const formData = new FormData()
   formData.append('file', new File([file], 'image'))
+  formData.append('link', file) // 可直接传http 支持传递语音，修改type为mp3即为云转码
+  formData.append('mp3', new File([file], 'mp3')) // 云转码传递此字段
   let res = await fetch(url, {
     method: 'POST',
     body: formData,
     headers: {
-      token: '2957'
+      token: '2957',
+      type: 'file' // 云转码修改为mp3
     }
   })
+  
 
   return await res.json()
 }
@@ -98,40 +101,71 @@ const token = '2957'
 const url = 'http://127.0.0.1:2957/api/upload'
 
 /** 视频 */
-Bot.videoToUrl = async function (file) {
-  return await uploadFile('video', file)
-}
-
-/** 语音 */
-Bot.audioToUrl = async function (file) {
-  return await uploadFile('audio', file, true)  // 需要使用云转码就设置参数3为true、铃音暂未适配、等待dev分支适配。
+Bot.videoToUrl = Bot.audioToUrl = async function (file) {
+  const formData = new FormData()
+  /** http */
+  if (isHTTP(file)) {
+    formData.append('link', file)
+  } else {
+    file = await Bot.Buffer(file)
+    formData.append('file', new File([file], 'file'))
+  }
+  const { url } = await uploadFile(formData, 'file')
+  return url
 }
 
 /** 图床 */
-Bot.imageToUrl = async (file) => {
-  return await uploadFile('image', file)
+Bot.imageToUrl = async function (file) {
+  const formData = new FormData()
+  /** http */
+  if (isHTTP(file)) {
+    formData.append('link', file)
+  } else {
+    file = await Bot.Buffer(file)
+    formData.append('file', new File([file], 'file'))
+  }
+  return await uploadFile(formData, 'file')
+}
+
+/** 云转码 */
+Bot.silkToUrl = async function (file) {
+  const formData = new FormData()
+  /** http */
+  if (isHTTP(file)) {
+    formData.append('link', file)
+  } else {
+    file = await Bot.Buffer(file)
+    formData.append('mp3', new File([file], 'mp3'))
+  }
+  const { url } = await uploadFile(formData, 'mp3')
+  return url
+}
+
+function isHTTP (str) {
+  return typeof str === 'string' && /^(http|https):\/\/.+/i.test(str)
 }
 
 /** 上传文件 */
-async function uploadFile (type, file, silk) {
-  file = await Bot.Buffer(file)
-  const formData = new FormData()
-  formData.append('file', new File([file], type))
-  let res = await fetch(url, {
-    method: 'POST',
-    body: formData,
-    headers: { token, type, silk }
-  })
+async function uploadFile (formData, type) {
+  const startTime = Date.now()
 
-  if (res.ok) {
-    const { url, width, height } = await res.json()
-    if (type === 'image') return { url, width, height }
-    return url
-  } else {
-    const error = `云盘请求错误：${await res.json()}`
-    throw error
+  try {
+    let res = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: { token, type }
+    })
+
+    if (res.ok) {
+      logger.warn(`上传完成：耗时 ${(Date.now() - startTime) / 1000} 秒`)
+      return await res.json()
+    }
+    throw `云盘请求错误：${await res.json()}`
+  } catch (error) {
+    throw '云盘请求错误：' + error
   }
 }
+
 ```
 
 ## 关于
